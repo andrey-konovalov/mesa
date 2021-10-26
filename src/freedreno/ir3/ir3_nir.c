@@ -812,8 +812,9 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 
    OPT_V(s, ir3_nir_lower_load_store_global);
 
-   if (OPT(s, ir3_nir_lower_64b_phi))
+   if (OPT(s, ir3_nir_lower_64b_phi)) {
       ; // probably need to scalarize phis...
+   }
 
    ir3_optimize_loop(compiler, s);
 
