@@ -355,6 +355,76 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    return atomic;
 }
 
+/* src[] = { addr, offset } */
+static void
+emit_intrinsic_load_global_ir3(struct ir3_context *ctx,
+                               nir_intrinsic_instr *intr,
+                               struct ir3_instruction **dst)
+{
+   struct ir3_block *b = ctx->block;
+   unsigned dest_components = nir_intrinsic_dest_components(intr);
+   struct ir3_instruction *addr, *src1;
+   int off = 0;
+
+   addr = ir3_collect(ctx, ir3_get_src(ctx, &intr->src[0])[0],
+                      ir3_get_src(ctx, &intr->src[0])[1]);
+
+   if (nir_src_is_const(intr->src[1])) {
+      off += nir_src_as_int(intr->src[1]);
+   } else {
+      /* indirect offset */
+      src1 = ir3_get_src(ctx, &intr->src[1])[0];
+      /* add offset to addr: */
+      addr = ir3_ADD_S(b, addr, 0, src1, 0);
+   }
+
+   struct ir3_instruction *load =
+      ir3_LDG(b, addr, 0, create_immed(b, off), 0,
+              create_immed(b, dest_components), 0);
+   load->cat6.type = type_uint_size(intr->dest.ssa.bit_size);
+   load->dsts[0]->wrmask = MASK(dest_components);
+
+   load->barrier_class = IR3_BARRIER_BUFFER_R;
+   load->barrier_conflict = IR3_BARRIER_BUFFER_W;
+
+   ir3_split_dest(b, dst, load, 0, dest_components);
+}
+
+static void
+emit_intrinsic_store_global_ir3(struct ir3_context *ctx,
+                                nir_intrinsic_instr *intr)
+{
+   struct ir3_block *b = ctx->block;
+   struct ir3_instruction *value, *addr, *src2;
+   unsigned ncomp = nir_intrinsic_src_components(intr, 0);
+   int off = 0;
+
+   addr = ir3_collect(ctx, ir3_get_src(ctx, &intr->src[1])[0],
+                      ir3_get_src(ctx, &intr->src[1])[1]);
+
+   if (nir_src_is_const(intr->src[2])) {
+      off += nir_src_as_int(intr->src[2]);
+   } else {
+      /* indirect offset */
+      src2 = ir3_get_src(ctx, &intr->src[2])[0];
+      /* add offset to addr: */
+      addr = ir3_ADD_S(b, addr, 0, src2, 0);
+   }
+
+   value = ir3_create_collect(ctx, ir3_get_src(ctx, &intr->src[0]), ncomp);
+
+   struct ir3_instruction *stg =
+      ir3_STG(b, addr, 0, create_immed(b, off), 0, value, 0,
+              create_immed(b, ncomp), 0);
+   stg->cat6.type = type_uint_size(intr->src[0].ssa->bit_size);
+   //stg->cat6.iim_val = 1; /* what this was for? */
+
+   array_insert(b, b->keeps, stg);
+
+   stg->barrier_class = IR3_BARRIER_BUFFER_W;
+   stg->barrier_conflict = IR3_BARRIER_BUFFER_R | IR3_BARRIER_BUFFER_W;
+}
+
 const struct ir3_context_funcs ir3_a4xx_funcs = {
    .emit_intrinsic_load_ssbo = emit_intrinsic_load_ssbo,
    .emit_intrinsic_store_ssbo = emit_intrinsic_store_ssbo,
@@ -363,6 +433,6 @@ const struct ir3_context_funcs ir3_a4xx_funcs = {
    .emit_intrinsic_store_image = emit_intrinsic_store_image,
    .emit_intrinsic_atomic_image = emit_intrinsic_atomic_image,
    .emit_intrinsic_image_size = emit_intrinsic_image_size_tex,
-   .emit_intrinsic_load_global_ir3 = NULL,
-   .emit_intrinsic_store_global_ir3 = NULL,
+   .emit_intrinsic_load_global_ir3 = emit_intrinsic_load_global_ir3,
+   .emit_intrinsic_store_global_ir3 = emit_intrinsic_store_global_ir3,
 };
