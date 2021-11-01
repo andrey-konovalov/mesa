@@ -34,7 +34,8 @@
 
 /* maybe move to fd5_program? */
 static void
-cs_program_emit(struct fd_ringbuffer *ring, struct ir3_shader_variant *v)
+cs_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
+                struct ir3_shader_variant *v)
 {
    const struct ir3_info *i = &v->info;
    enum a3xx_threadsize thrsz = i->double_threadsize ? FOUR_QUADS : TWO_QUADS;
@@ -101,7 +102,7 @@ cs_program_emit(struct fd_ringbuffer *ring, struct ir3_shader_variant *v)
    OUT_RING(ring, 0x1); /* HLSQ_CS_CNTL_1 */
 
    if (instrlen > 0)
-      fd5_emit_shader(ring, v);
+      fd5_emit_shader(ctx, ring, v);
 }
 
 static void
@@ -119,7 +120,7 @@ fd5_launch_grid(struct fd_context *ctx,
       return;
 
    if (ctx->dirty_shader[PIPE_SHADER_COMPUTE] & FD_DIRTY_SHADER_PROG)
-      cs_program_emit(ring, v);
+      cs_program_emit(ctx, ring, v);
 
    fd5_emit_cs_state(ctx, ring, v);
    fd5_emit_cs_consts(v, ring, ctx, info);

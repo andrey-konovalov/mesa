@@ -102,6 +102,20 @@ class GPUInfo(Struct):
 
         s.gpu_infos.append(self)
 
+class A5xxGPUInfo(GPUInfo):
+    """This only includes the private memory related parameters,
+       and was only tested with a530.
+    """
+    def __init__(self, fibers_per_sp, num_sp_cores, num_ccu):
+        super().__init__(gmem_align_w = 64, gmem_align_h = 32,
+                         tile_align_w = 64, tile_align_h = 32,
+                         tile_max_w   = 1024, # max_bitfield_val(7, 0, 5)
+                         tile_max_h   = max_bitfield_val(16, 9, 5),
+                         num_vsc_pipes = 16)
+        assert(num_sp_cores == num_ccu)
+
+        self.num_sp_cores = num_sp_cores
+        self.a5xx_fibers_per_sp = fibers_per_sp
 
 class A6xxGPUInfo(GPUInfo):
     """The a6xx generation has a lot more parameters, and is broken down
@@ -188,7 +202,6 @@ add_gpus([
         GPUId(509),
         GPUId(510),
         GPUId(512),
-        GPUId(530),
         GPUId(540),
     ], GPUInfo(
         gmem_align_w = 64,  gmem_align_h = 32,
@@ -196,6 +209,14 @@ add_gpus([
         tile_max_w   = 1024, # max_bitfield_val(7, 0, 5)
         tile_max_h   = max_bitfield_val(16, 9, 5),
         num_vsc_pipes = 16,
+    ))
+
+add_gpus([
+        GPUId(530),
+    ], A5xxGPUInfo(
+        fibers_per_sp = 1024,
+        num_sp_cores = 2,
+        num_ccu = 2,
     ))
 
 # a6xx can be divided into distinct sub-generations, where certain device-
