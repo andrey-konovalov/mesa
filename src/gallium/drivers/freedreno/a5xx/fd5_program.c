@@ -58,6 +58,41 @@ fd5_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
       bin = NULL;
    }
 
+   uint32_t fibers_per_sp = 0 /* ctx->screen->info->a5xx.fibers_per_sp */;
+   uint32_t num_sp_cores = 0 /* ctx->screen->info->num_sp_cores */;
+
+   uint32_t per_fiber_size = ALIGN(so->pvtmem_size, 512);
+
+   uint32_t per_sp_size = ALIGN(per_fiber_size * fibers_per_sp, 1 << 12);
+
+   OUT_PKT4(ring, REG_A5XX_SP_CS_OBJ_FIRST_EXEC_OFFSET, 7);
+   OUT_RING(ring, 0);               /* SP_CS_OBJ_FIRST_EXEC_OFFSET */
+   OUT_RELOC(ring, so->bo, 0, 0, 0); /* SP_CS_OBJ_START_LO/HI */
+#if 0 /* TBD */
+   OUT_RING(ring, A5XX_SP_VS_PVT_MEM_PARAM_MEMSIZEPERITEM(per_fiber_size));
+#else
+  OUT_RING(ring, 0);
+#endif
+   if (so->pvtmem_size > 0) { /* SP_CS_PVT_MEM_ADDR */
+#if 0 /* TBD */
+      OUT_RELOC(ring, ctx->pvtmem[0].bo, 0, 0, 0);
+#else
+      OUT_RING(ring, 0);
+      OUT_RING(ring, 0);
+#endif
+   } else {
+      OUT_RING(ring, 0);
+      OUT_RING(ring, 0);
+   }
+#if 0 /* TBD */
+   OUT_RING(ring, A5XX_SP_CS_PVT_MEM_SIZE_TOTALPVTMEMSIZE(0));
+#else
+   OUT_RING(ring, A5XX_SP_CS_PVT_MEM_SIZE_TOTALPVTMEMSIZE(per_sp_size));
+
+   OUT_PKT4(ring, REG_A5XX_SP_CS_PVT_MEM_HW_STACK_OFFSET, 1);
+   OUT_RING(ring, A5XX_SP_CS_PVT_MEM_HW_STACK_OFFSET_OFFSET(per_sp_size));
+#endif
+
    OUT_PKT7(ring, CP_LOAD_STATE4, 3 + sz);
    OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(0) |
                      CP_LOAD_STATE4_0_STATE_SRC(src) |

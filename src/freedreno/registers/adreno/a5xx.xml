@@ -2561,10 +2561,22 @@ bit 7 for RECTLIST (clear) when z32s8 (used for clear of depth32?  not set
 	 -->
 	<reg32 offset="0xe5db" name="UNKNOWN_E5DB"/>
 	<reg32 offset="0xe5f0" name="SP_CS_CTRL_REG0" type="a5xx_sp_xs_ctrl_reg0"/>
-	<reg32 offset="0xe5f2" name="UNKNOWN_E5F2"/>
+	<reg32 offset="0xe5f2" name="SP_CS_OBJ_FIRST_EXEC_OFFSET" type="uint"/>
 	<reg32 offset="0xe5f3" name="SP_CS_OBJ_START_LO"/>
 	<reg32 offset="0xe5f4" name="SP_CS_OBJ_START_HI"/>
+	<reg32 offset="0xe5f5" name="SP_CS_PVT_MEM_PARAM">
+		<bitfield name="MEMSIZEPERITEM" low="0" high="7" shr="9">
+			<doc>The size of memory that ldp/stp can address.</doc>
+		</bitfield>
+	</reg32>
+	<reg64 offset="0xe5f6" name="SP_CS_PVT_MEM_ADDR" align="32"/>
+	<reg32 offset="0xe5f8" name="SP_CS_PVT_MEM_SIZE">
+		<bitfield name="TOTALPVTMEMSIZE" low="0" high="17" shr="12"/>
+	</reg32>
 	<!-- e5f9 something compute related.. seems to change when HLSQ_CS_CNTL_1 changes -->
+	<reg32 offset="0xe5fc" name="SP_CS_PVT_MEM_HW_STACK_OFFSET">
+		<bitfield name="OFFSET" low="0" high="18" shr="11"/>
+	</reg32>
 
 	<reg32 offset="0xe600" name="SP_HS_CTRL_REG0" type="a5xx_sp_xs_ctrl_reg0"/>
 	<reg32 offset="0xe602" name="UNKNOWN_E602"/>
