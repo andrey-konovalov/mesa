@@ -41,7 +41,8 @@
 #include "ir3_cache.h"
 
 void
-fd5_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
+fd5_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
+                const struct ir3_shader_variant *so)
 {
    const struct ir3_info *si = &so->info;
    enum a4xx_state_block sb = fd4_stage2shadersb(so->type);
@@ -58,40 +59,39 @@ fd5_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
       bin = NULL;
    }
 
-   uint32_t fibers_per_sp = 0 /* ctx->screen->info->a5xx.fibers_per_sp */;
-   uint32_t num_sp_cores = 0 /* ctx->screen->info->num_sp_cores */;
+   uint32_t fibers_per_sp = ctx->screen->info->a5xx_fibers_per_sp;
+   uint32_t num_sp_cores = ctx->screen->info->num_sp_cores;
 
    uint32_t per_fiber_size = ALIGN(so->pvtmem_size, 512);
+   if (per_fiber_size > ctx->pvtmem[0].per_fiber_size) {
+      if (ctx->pvtmem[0].bo)
+         fd_bo_del(ctx->pvtmem[0].bo);
+      ctx->pvtmem[0].per_fiber_size = per_fiber_size;
+      uint32_t total_size =
+         ALIGN(per_fiber_size * fibers_per_sp, 1 << 12) * num_sp_cores;
+      ctx->pvtmem[0].bo = fd_bo_new(
+         ctx->screen->dev, total_size, 0,
+         "pvtmem_per_fiber_%d", per_fiber_size);
+   } else {
+      per_fiber_size = ctx->pvtmem[0].per_fiber_size;
+   }
 
    uint32_t per_sp_size = ALIGN(per_fiber_size * fibers_per_sp, 1 << 12);
 
    OUT_PKT4(ring, REG_A5XX_SP_CS_OBJ_FIRST_EXEC_OFFSET, 7);
    OUT_RING(ring, 0);               /* SP_CS_OBJ_FIRST_EXEC_OFFSET */
    OUT_RELOC(ring, so->bo, 0, 0, 0); /* SP_CS_OBJ_START_LO/HI */
-#if 0 /* TBD */
-   OUT_RING(ring, A5XX_SP_VS_PVT_MEM_PARAM_MEMSIZEPERITEM(per_fiber_size));
-#else
-  OUT_RING(ring, 0);
-#endif
+   OUT_RING(ring, A5XX_SP_CS_PVT_MEM_PARAM_MEMSIZEPERITEM(per_fiber_size));
    if (so->pvtmem_size > 0) { /* SP_CS_PVT_MEM_ADDR */
-#if 0 /* TBD */
       OUT_RELOC(ring, ctx->pvtmem[0].bo, 0, 0, 0);
-#else
-      OUT_RING(ring, 0);
-      OUT_RING(ring, 0);
-#endif
    } else {
       OUT_RING(ring, 0);
       OUT_RING(ring, 0);
    }
-#if 0 /* TBD */
-   OUT_RING(ring, A5XX_SP_CS_PVT_MEM_SIZE_TOTALPVTMEMSIZE(0));
-#else
    OUT_RING(ring, A5XX_SP_CS_PVT_MEM_SIZE_TOTALPVTMEMSIZE(per_sp_size));
 
    OUT_PKT4(ring, REG_A5XX_SP_CS_PVT_MEM_HW_STACK_OFFSET, 1);
    OUT_RING(ring, A5XX_SP_CS_PVT_MEM_HW_STACK_OFFSET_OFFSET(per_sp_size));
-#endif
 
    OUT_PKT7(ring, CP_LOAD_STATE4, 3 + sz);
    OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(0) |
@@ -508,7 +508,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
    OUT_RELOC(ring, s[VS].v->bo, 0, 0, 0); /* SP_VS_OBJ_START_LO/HI */
 
    if (s[VS].instrlen)
-      fd5_emit_shader(ring, s[VS].v);
+      fd5_emit_shader(ctx, ring, s[VS].v);
 
    // TODO depending on other bits in this reg (if any) set somewhere else?
    OUT_PKT4(ring, REG_A5XX_PC_PRIM_VTX_CNTL, 1);
@@ -719,7 +719,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
    if (!emit->binning_pass)
       if (s[FS].instrlen)
-         fd5_emit_shader(ring, s[FS].v);
+         fd5_emit_shader(ctx, ring, s[FS].v);
 
    OUT_PKT4(ring, REG_A5XX_VFD_CONTROL_1, 5);
    OUT_RING(ring, A5XX_VFD_CONTROL_1_REGID4VTX(vertex_regid) |

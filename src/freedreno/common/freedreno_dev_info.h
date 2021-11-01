@@ -124,6 +124,7 @@ struct fd_dev_info {
             uint32_t PC_POWER_CNTL;
          } magic;
       } a6xx;
+      uint32_t a5xx_fibers_per_sp; /* Info for private memory calculations */
    };
 };
 
