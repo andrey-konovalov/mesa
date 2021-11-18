@@ -982,6 +982,7 @@ emit_intrinsic_load_kernel_input(struct ir3_context *ctx,
 {
    const struct ir3_const_state *const_state = ir3_const_state(ctx->so);
    struct ir3_block *b = ctx->block;
+   unsigned dest_components = nir_intrinsic_dest_components(intr);
    unsigned offset = nir_intrinsic_base(intr);
    unsigned p = regid(const_state->offsets.kernel_params, 0);
 
@@ -993,7 +994,10 @@ emit_intrinsic_load_kernel_input(struct ir3_context *ctx,
       /* kernel param position is in bytes, but constant space is 32b registers: */
       compile_assert(ctx, !(offset & 0x3));
 
-      dst[0] = create_uniform(b, p + (offset / 4));
+      //dst[0] = create_uniform(b, p + (offset / 4));
+      for (int i = 0; i < dest_components; i++) {
+         dst[i] = create_uniform(b, p + (offset / 4) + i);
+      }
    } else {
       /* kernel param position is in bytes, but constant space is 32b registers: */
       compile_assert(ctx, !(offset & 0x3));
