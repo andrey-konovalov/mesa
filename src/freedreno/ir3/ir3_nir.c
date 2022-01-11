@@ -74,6 +74,9 @@ static const nir_shader_compiler_options options = {
    .has_imul24 = true,
    .has_fsub = true,
    .has_isub = true,
+   .max_unroll_iterations = 32,
+   .max_unroll_iterations_aggressive = 128,
+   .force_indirect_unrolling = nir_var_all,
    .lower_wpos_pntc = true,
    .lower_cs_local_index_from_id = true,
 
