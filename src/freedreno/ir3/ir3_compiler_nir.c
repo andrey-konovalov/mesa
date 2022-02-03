@@ -4256,7 +4256,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
    ir = so->ir = ctx->ir;
 
-   if (so->type == MESA_SHADER_COMPUTE) {
+   if ((so->type == MESA_SHADER_COMPUTE) ||
+       (so->type == MESA_SHADER_KERNEL)) {
       so->local_size[0] = ctx->s->info.workgroup_size[0];
       so->local_size[1] = ctx->s->info.workgroup_size[1];
       so->local_size[2] = ctx->s->info.workgroup_size[2];
